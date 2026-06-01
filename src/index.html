@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Oracle Customer Success Services</title>
+    <link rel="stylesheet" href="styles.css?v=leadership-welcome">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div>
+            <h1>Oracle Customer Success Services</h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <div class="oracle-top-logo" aria-label="Oracle">
+            <img src="assets/oracle-logo-clean.png" alt="Oracle">
+          </div>
+          <div class="theme-toggle" aria-label="Theme">
+            <button class="theme-option active" id="dayThemeButton" type="button" data-theme-choice="day">Day</button>
+            <button class="theme-option" id="darkThemeButton" type="button" data-theme-choice="dark">Dark</button>
+          </div>
+          <label class="button primary" for="workbookInput">Upload Excel</label>
+          <input id="workbookInput" class="visually-hidden" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+          <button class="button secondary" id="sampleButton" type="button">Load Sample</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="summary-band" aria-label="Project summary">
+          <div class="project-heading">
+            <div>
+              <p class="eyebrow">PMO Monitoring</p>
+              <h2 id="projectTitle">Project Monitoring Dashboard</h2>
+            </div>
+            <div class="heading-actions">
+              <div class="people-strip" id="peopleStrip" aria-label="Project leadership"></div>
+              <div class="customer-logo-card" id="customerLogoCard" hidden></div>
+              <span class="status-pill" id="sourceStatus" hidden></span>
+            </div>
+          </div>
+
+          <div class="selector-row">
+            <label for="projectSelect">Project</label>
+            <select id="projectSelect"></select>
+          </div>
+
+          <div class="summary-grid" id="summaryGrid"></div>
+
+          <section class="quick-calculator summary-theme-calculator" aria-label="Quick revenue calculator">
+            <div class="quick-calculator-title">
+              <p class="eyebrow">Quick Calculator</p>
+              <h3>Revenue Estimate</h3>
+            </div>
+            <div class="quick-calculator-grid">
+              <label>
+                <span>Project Fund</span>
+                <input id="quickProjectFund" type="number" min="0" step="0.01" inputmode="decimal">
+              </label>
+              <label>
+                <span>EAC Hours</span>
+                <input id="quickEacHours" type="number" min="0" step="0.01" inputmode="decimal">
+              </label>
+              <label>
+                <span>Target Hours</span>
+                <input id="quickTargetHours" type="number" min="0" step="0.01" inputmode="decimal">
+              </label>
+              <div class="quick-calculator-result" id="quickRevenueCard">
+                <span>Calculated Revenue</span>
+                <strong id="quickRevenueResult">-</strong>
+                <small id="quickRevenueFormula">Target Hours / EAC Hours x Project Fund</small>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <nav class="tabbar" aria-label="Dashboard sections">
+          <button class="tab active" type="button" data-tab="summary">Summary</button>
+          <button class="tab" type="button" data-tab="revenue">Revenue Estimator</button>
+          <button class="tab" type="button" data-tab="unbilled">Unbilled Situation</button>
+          <button class="tab" type="button" data-tab="milestones">Milestones</button>
+          <button class="tab" type="button" data-tab="audit">Formula Trace</button>
+        </nav>
+
+        <section class="panel active" id="summaryPanel" data-panel="summary">
+          <article class="panel-block project-snapshot-block summary-theme-portfolio">
+            <div class="section-title">
+              <p class="eyebrow">Project Snapshot</p>
+              <h3>Portfolio View</h3>
+            </div>
+            <div class="project-facts" id="projectFacts"></div>
+          </article>
+
+          <div class="summary-overview">
+            <article class="panel-block summary-theme-hours">
+              <div class="section-title">
+                <p class="eyebrow">Hours Position</p>
+                <h3>Actuals vs Baselines</h3>
+              </div>
+              <div class="hours-grid" id="hoursGrid"></div>
+            </article>
+
+            <article class="panel-block summary-theme-revenue">
+              <div class="section-title">
+                <p class="eyebrow">Revenue Position</p>
+                <h3>Executive Readout</h3>
+              </div>
+              <div class="readout-grid" id="readoutGrid"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="revenuePanel" data-panel="revenue">
+          <div class="layout-two top-aligned">
+            <article class="panel-block">
+              <div class="section-title">
+                <p class="eyebrow">Estimator Method</p>
+                <h3 id="methodTitle">Formula Mode</h3>
+              </div>
+              <div class="method-grid" id="methodGrid"></div>
+            </article>
+
+            <article class="panel-block">
+              <div class="section-title">
+                <p class="eyebrow">Controls</p>
+                <h3>Workbook Intake</h3>
+              </div>
+              <div class="drop-zone" id="dropZone">
+                <strong>Drop Excel file</strong>
+                <span>.xlsx project master or estimator workbook</span>
+              </div>
+            </article>
+          </div>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Forecast Curve</p>
+              <h3>Revenue and POC Trend</h3>
+            </div>
+            <div id="summaryChart" class="chart-shell"></div>
+          </article>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Estimator Tables</p>
+              <h3>Quarterly and Monthly Revenue</h3>
+            </div>
+            <div class="table-stack">
+              <div class="table-section">
+                <div class="table-title">
+                  <span>Quarterly view</span>
+                  <strong>Click a quarter to drill down</strong>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Quarter</th>
+                        <th>Status</th>
+                        <th>Revenue</th>
+                        <th>Trend</th>
+                        <th>Change</th>
+                        <th>Cumulative Revenue</th>
+                        <th>POC</th>
+                        <th>Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody id="quarterRevenueRows"></tbody>
+                    <tfoot id="quarterRevenueTotals"></tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <div class="table-section">
+                <div class="table-title">
+                  <span>Monthly view</span>
+                  <strong id="monthlyTableTitle">Selected quarter</strong>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Period</th>
+                        <th>Hours</th>
+                        <th>Days</th>
+                        <th>POC</th>
+                        <th>Revenue</th>
+                        <th>Trend</th>
+                        <th>Change</th>
+                        <th>Cumulative Revenue</th>
+                        <th>Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody id="monthlyRevenueRows"></tbody>
+                    <tfoot id="monthlyRevenueTotals"></tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel" id="unbilledPanel" data-panel="unbilled">
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Unbilled Situation</p>
+              <h3>Revenue vs Invoicing Position</h3>
+            </div>
+            <div class="unbilled-grid" id="unbilledSummary"></div>
+          </article>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Unbilled Comparisons</p>
+              <h3>Revenue, Invoicing, and Aging</h3>
+            </div>
+            <div class="unbilled-charts" id="unbilledCharts"></div>
+          </article>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Unbilled Register</p>
+              <h3>Quarterly Calculation</h3>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quarter</th>
+                    <th>Revenue</th>
+                    <th>Invoicing</th>
+                    <th>Cumulative Revenue</th>
+                    <th>Cumulative Invoicing</th>
+                    <th>Unbilled Revenue</th>
+                    <th>&gt;180 Days</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="unbilledRows"></tbody>
+                <tfoot id="unbilledTotals"></tfoot>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel" id="milestonesPanel" data-panel="milestones">
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Milestones Status</p>
+              <h3>Certificate and Invoice Watch</h3>
+            </div>
+            <div class="milestone-grid" id="milestoneSummary"></div>
+          </article>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Milestones Comparisons</p>
+              <h3>Progress and Value Split</h3>
+            </div>
+            <div class="milestone-charts" id="milestoneCharts"></div>
+          </article>
+
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Milestones Register</p>
+              <h3>Project Deliverables</h3>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Sno</th>
+                    <th>Milestone</th>
+                    <th>Percentage</th>
+                    <th>Fee in AED</th>
+                    <th>Expected Date</th>
+                    <th>Certificate Status</th>
+                    <th>Invoice Status</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="milestoneRows"></tbody>
+                <tfoot id="milestoneTotals"></tfoot>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel" id="auditPanel" data-panel="audit">
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">TAQA Workbook Logic</p>
+              <h3>Calculation Trace</h3>
+            </div>
+            <div class="formula-grid" id="formulaGrid"></div>
+          </article>
+          <article class="panel-block">
+            <div class="section-title">
+              <p class="eyebrow">Loaded Data</p>
+              <h3>Workbook Audit</h3>
+            </div>
+            <div class="audit-list" id="auditList"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js?v=second-project-hours-days-fixed"></script>
+  </body>
+</html>

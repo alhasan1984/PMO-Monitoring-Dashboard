@@ -1,0 +1,10 @@
+{
+  "name": "pmo-monitoring-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static PMO monitoring dashboard for project revenue, unbilled position, milestones, and executive KPIs.",
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./scripts/server.ps1",
+    "check": "node --check ./src/app.js"
+  }
+}
