@@ -877,13 +877,20 @@ select {
 }
 
 .landing-marker {
+  align-items: center;
   border-radius: 999px;
   display: inline-flex;
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 900;
+  gap: 4px;
   justify-content: center;
-  min-width: 58px;
-  padding: 5px 8px;
+  min-width: 74px;
+  padding: 4px 7px;
+}
+
+.landing-marker-arrow {
+  font-size: 0.82rem;
+  line-height: 1;
 }
 
 .landing-marker-up {
