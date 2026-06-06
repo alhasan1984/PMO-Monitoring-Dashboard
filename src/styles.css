@@ -331,15 +331,7 @@ main {
   isolation: isolate;
 }
 
-.welcoming-person {
-  animation: leadershipWelcomeIn 760ms cubic-bezier(0.2, 0.72, 0.22, 1) both;
-}
-
-.welcoming-person:nth-child(2) {
-  animation-delay: 120ms;
-}
-
-.welcoming-person::before {
+.person-card::before {
   background:
     radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--oracle-red) 18%, transparent), transparent 38%),
     linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--paper) 72%, transparent));
@@ -349,27 +341,6 @@ main {
   opacity: 0.95;
   position: absolute;
   z-index: -1;
-}
-
-.welcoming-person::after {
-  animation: welcomeBubble 3.5s ease-in-out infinite;
-  background: color-mix(in srgb, var(--oracle-red) 90%, var(--amber));
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 999px;
-  box-shadow: 0 10px 20px rgba(199, 70, 52, 0.2);
-  color: #ffffff;
-  content: "Welcome";
-  font-size: 0.62rem;
-  font-weight: 850;
-  letter-spacing: 0;
-  line-height: 1;
-  padding: 5px 8px;
-  position: absolute;
-  right: 8px;
-  text-transform: uppercase;
-  top: -13px;
-  transform-origin: 12% 100%;
-  white-space: nowrap;
 }
 
 .person-photo {
@@ -386,37 +357,8 @@ main {
   width: 46px;
 }
 
-.welcoming-person .person-photo {
-  animation: photoGreeting 3.2s ease-in-out infinite;
+.person-card .person-photo {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--oracle-red) 9%, transparent);
-  transform-origin: 50% 100%;
-}
-
-.welcoming-person .person-photo::before {
-  animation: welcomePulse 2.6s ease-out infinite;
-  border: 1px solid color-mix(in srgb, var(--oracle-red) 46%, transparent);
-  border-radius: inherit;
-  content: "";
-  inset: -6px;
-  position: absolute;
-}
-
-.welcoming-person .person-photo::after {
-  animation: waveMarker 1.8s ease-in-out infinite;
-  background:
-    linear-gradient(135deg, #ffffff 0 36%, transparent 36%),
-    var(--oracle-red);
-  border: 2px solid var(--surface);
-  border-radius: 10px 10px 10px 3px;
-  box-shadow: 0 6px 14px rgba(35, 52, 58, 0.18);
-  content: "";
-  height: 17px;
-  position: absolute;
-  right: -7px;
-  top: -4px;
-  transform-origin: 20% 90%;
-  width: 17px;
-  z-index: 2;
 }
 
 .person-photo img {
@@ -457,68 +399,6 @@ main {
   line-height: 1.15;
   max-width: 130px;
   overflow-wrap: anywhere;
-}
-
-@keyframes leadershipWelcomeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes photoGreeting {
-  0%,
-  100% {
-    transform: rotate(0deg) translateY(0);
-  }
-  18% {
-    transform: rotate(-3deg) translateY(-1px);
-  }
-  34% {
-    transform: rotate(3deg) translateY(-1px);
-  }
-  50% {
-    transform: rotate(0deg) translateY(0);
-  }
-}
-
-@keyframes welcomePulse {
-  0% {
-    opacity: 0.55;
-    transform: scale(0.9);
-  }
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(1.25);
-  }
-}
-
-@keyframes waveMarker {
-  0%,
-  100% {
-    transform: rotate(-7deg);
-  }
-  35% {
-    transform: rotate(13deg);
-  }
-  62% {
-    transform: rotate(-3deg);
-  }
-}
-
-@keyframes welcomeBubble {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  45% {
-    transform: translateY(-3px) rotate(-1deg);
-  }
 }
 
 .status-pill {
@@ -877,6 +757,125 @@ select {
   border-radius: 8px;
   box-shadow: 0 16px 38px rgba(48, 75, 78, 0.08);
   padding: 18px;
+}
+
+.landing-block {
+  background: var(--surface);
+  border-color: #8d9798;
+  padding: 0;
+}
+
+.landing-title {
+  background: color-mix(in srgb, var(--paper) 76%, var(--surface));
+  border-bottom: 1px solid #8d9798;
+  padding: 8px 10px;
+}
+
+.landing-title h3 {
+  color: #000000;
+  font-size: 1rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.landing-table-wrap {
+  background: var(--surface);
+}
+
+.landing-table {
+  border-collapse: collapse;
+  min-width: 1320px;
+}
+
+.landing-table th,
+.landing-table td {
+  border: 1px solid #1e1e1e;
+  color: #000000;
+  font-size: 0.86rem;
+  padding: 7px 10px;
+  vertical-align: middle;
+}
+
+.landing-table th {
+  background: color-mix(in srgb, var(--paper) 80%, #ffffff);
+  font-size: 0.84rem;
+  font-weight: 850;
+  text-transform: none;
+}
+
+.landing-table td:nth-child(1),
+.landing-table th:nth-child(1) {
+  padding: 4px 7px;
+  text-align: center;
+  width: 34px;
+}
+
+.landing-table td:nth-child(3),
+.landing-table td:nth-child(6),
+.landing-table td:nth-child(7),
+.landing-table td:nth-child(8),
+.landing-table td:nth-child(9),
+.landing-table td:nth-child(10),
+.landing-table td:nth-child(11) {
+  text-align: center;
+}
+
+.landing-project-row {
+  cursor: pointer;
+}
+
+.landing-project-number {
+  color: var(--oracle-red) !important;
+  font-weight: 750;
+}
+
+.landing-open-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d66d2c;
+  border-radius: 2px;
+  color: #d66d2c;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 900;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+}
+
+.landing-cell-ok,
+.landing-cell-warn,
+.landing-cell-risk,
+.landing-cell-sales {
+  font-weight: 900;
+}
+
+.landing-cell-ok {
+  background: color-mix(in srgb, var(--green) 78%, #ffffff);
+  color: #ffffff !important;
+}
+
+.landing-cell-warn {
+  background: #ffd365;
+  color: #141414 !important;
+}
+
+.landing-cell-risk {
+  background: color-mix(in srgb, var(--berry) 86%, #ffffff);
+  color: #ffffff !important;
+}
+
+.landing-cell-sales {
+  background: #ffffff;
+  color: #000000 !important;
+}
+
+.landing-table tfoot td {
+  background: color-mix(in srgb, var(--teal) 10%, #ffffff);
+  border-top: 2px solid #1e1e1e;
 }
 
 .summary-theme-portfolio,
@@ -1781,12 +1780,6 @@ tbody tr.selected-row {
     min-width: 0;
   }
 
-  .welcoming-person::after {
-    left: 64px;
-    right: auto;
-    top: -10px;
-  }
-
   .customer-logo-card {
     justify-items: start;
     min-width: 0;
@@ -1811,15 +1804,5 @@ tbody tr.selected-row {
 
   .top-actions {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .welcoming-person,
-  .welcoming-person::after,
-  .welcoming-person .person-photo,
-  .welcoming-person .person-photo::before,
-  .welcoming-person .person-photo::after {
-    animation: none;
   }
 }
