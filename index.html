@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Oracle Customer Success Services</title>
-    <link rel="stylesheet" href="styles.css?v=leadership-welcome">
+    <link rel="stylesheet" href="styles.css?v=landing-unbilled-static-photos">
   </head>
   <body>
     <div class="app-shell">
@@ -64,27 +64,57 @@
                 <input id="quickEacHours" type="number" min="0" step="0.01" inputmode="decimal">
               </label>
               <label>
-                <span>Target Hours</span>
+                <span>Quarter Forecasted Hours</span>
                 <input id="quickTargetHours" type="number" min="0" step="0.01" inputmode="decimal">
               </label>
               <div class="quick-calculator-result" id="quickRevenueCard">
                 <span>Calculated Revenue</span>
                 <strong id="quickRevenueResult">-</strong>
-                <small id="quickRevenueFormula">Target Hours / EAC Hours x Project Fund</small>
+                <small id="quickRevenueFormula">Quarter Forecasted Hours / EAC Hours x Project Fund</small>
               </div>
             </div>
           </section>
         </section>
 
         <nav class="tabbar" aria-label="Dashboard sections">
-          <button class="tab active" type="button" data-tab="summary">Summary</button>
+          <button class="tab active" type="button" data-tab="landing">Landing Page</button>
+          <button class="tab" type="button" data-tab="summary">Summary</button>
           <button class="tab" type="button" data-tab="revenue">Revenue Estimator</button>
           <button class="tab" type="button" data-tab="unbilled">Unbilled Situation</button>
           <button class="tab" type="button" data-tab="milestones">Milestones</button>
           <button class="tab" type="button" data-tab="audit">Formula Trace</button>
         </nav>
 
-        <section class="panel active" id="summaryPanel" data-panel="summary">
+        <section class="panel active" id="landingPanel" data-panel="landing">
+          <article class="panel-block landing-block">
+            <div class="landing-title">
+              <h3>Dashboard View: Favorites (in Constant Dollar)</h3>
+            </div>
+            <div class="table-wrap landing-table-wrap">
+              <table class="landing-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Customer</th>
+                    <th>Project Number</th>
+                    <th>Project Name</th>
+                    <th>Project Manager</th>
+                    <th>Labor Funding</th>
+                    <th>Current Qtr Forecast</th>
+                    <th>EAC Margin</th>
+                    <th>QRS Rating</th>
+                    <th>Overall Rating</th>
+                    <th>Prior Month Rating</th>
+                  </tr>
+                </thead>
+                <tbody id="landingRows"></tbody>
+                <tfoot id="landingTotals"></tfoot>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel" id="summaryPanel" data-panel="summary">
           <article class="panel-block project-snapshot-block summary-theme-portfolio">
             <div class="section-title">
               <p class="eyebrow">Project Snapshot</p>
@@ -164,7 +194,7 @@
                         <th>Change</th>
                         <th>Cumulative Revenue</th>
                         <th>POC</th>
-                        <th>Remaining</th>
+                        <th>ETC Revenue</th>
                       </tr>
                     </thead>
                     <tbody id="quarterRevenueRows"></tbody>
@@ -190,7 +220,7 @@
                         <th>Trend</th>
                         <th>Change</th>
                         <th>Cumulative Revenue</th>
-                        <th>Remaining</th>
+                        <th>ETC Revenue</th>
                       </tr>
                     </thead>
                     <tbody id="monthlyRevenueRows"></tbody>
@@ -233,8 +263,9 @@
                     <th>Invoicing</th>
                     <th>Cumulative Revenue</th>
                     <th>Cumulative Invoicing</th>
-                    <th>Unbilled Revenue</th>
-                    <th>&gt;180 Days</th>
+                    <th>Current Unbilled Situation</th>
+                    <th>Unbilled Situation (Reversal Risk)</th>
+                    <th>Invoice Aging</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -307,6 +338,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=second-project-hours-days-fixed"></script>
+    <script src="app.js?v=landing-unbilled-static-photos"></script>
   </body>
 </html>

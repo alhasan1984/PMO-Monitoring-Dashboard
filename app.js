@@ -1,5 +1,6 @@
 const EXCHANGE_RATE = 3.67;
 const HOURS_PER_DAY = 8;
+const UNBILLED_RESERVE_USD = 250000;
 const FISCAL_QUARTER_END_MONTHS = {
   1: 7,
   2: 10,
@@ -186,7 +187,7 @@ const SAMPLE_PROJECTS = [
 const state = {
   projects: SAMPLE_PROJECTS,
   selectedIndex: 0,
-  activeTab: "summary",
+  activeTab: "landing",
   selectedQuarterKey: null,
   theme: localStorage.getItem("dashboardTheme") || "day",
   sourceStatus: "Sample Data",
@@ -202,6 +203,8 @@ const elements = {
   customerLogoCard: document.getElementById("customerLogoCard"),
   peopleStrip: document.getElementById("peopleStrip"),
   sourceStatus: document.getElementById("sourceStatus"),
+  landingRows: document.getElementById("landingRows"),
+  landingTotals: document.getElementById("landingTotals"),
   summaryGrid: document.getElementById("summaryGrid"),
   quickProjectFund: document.getElementById("quickProjectFund"),
   quickEacHours: document.getElementById("quickEacHours"),
@@ -339,6 +342,7 @@ function render() {
   const project = currentProject();
   renderTabs();
   renderProjectSelect();
+  renderLanding();
   elements.projectTitle.textContent = "Project Monitoring Dashboard";
   if (elements.sourceStatus) {
     const visibleStatus = state.sourceStatus === "Sample Data" ? "" : state.sourceStatus;
@@ -350,6 +354,7 @@ function render() {
   renderCustomerLogo(project);
 
   if (!project) {
+    renderLanding();
     elements.summaryGrid.innerHTML = emptyState("No project loaded");
     renderQuickRevenueCalculator(null);
     return;
@@ -383,6 +388,139 @@ function renderProjectSelect() {
     .map((project, index) => `<option value="${index}">${escapeHtml(project.name || project.number || `Project ${index + 1}`)}</option>`)
     .join("");
   elements.projectSelect.value = String(state.selectedIndex);
+}
+
+function renderLanding() {
+  if (!elements.landingRows || !elements.landingTotals) return;
+  const projects = Array.isArray(state.projects) ? state.projects : [];
+  if (!projects.length) {
+    elements.landingRows.innerHTML = `<tr><td colspan="11">${emptyState("No projects loaded")}</td></tr>`;
+    elements.landingTotals.innerHTML = "";
+    return;
+  }
+
+  const currentQuarter = currentFiscalQuarterInfo(new Date());
+  elements.landingRows.innerHTML = projects
+    .map((project, index) => {
+      const currentForecast = currentQuarterForecast(project, currentQuarter);
+      const qrsRating = project.qrsRating || "-";
+      const overallRating = landingOverallRating(project);
+      const priorRating = landingPriorMonthRating(project, overallRating);
+      return `
+        <tr class="landing-project-row ${index === state.selectedIndex ? "selected-row" : ""}" data-project-index="${index}">
+          <td><button class="landing-open-button" type="button" aria-label="Open ${escapeHtml(project.name || project.number || `Project ${index + 1}`)}">+</button></td>
+          <td>${escapeHtml(projectCustomer(project))}</td>
+          <td class="landing-project-number">${escapeHtml(project.number || "-")}</td>
+          <td>${escapeHtml(project.name || "-")}</td>
+          <td>${escapeHtml(project.projectOwner || project.portfolioLead || "-")}</td>
+          <td>${landingMoney(project.fundUsd)}</td>
+          <td class="${landingForecastClass(currentForecast, project)}">${landingMoney(currentForecast)}</td>
+          <td class="${landingMarginClass(project.estimateAtClosureMargin)}">${percent(project.estimateAtClosureMargin)}</td>
+          <td class="${landingRatingClass(qrsRating)}">${escapeHtml(String(qrsRating))}</td>
+          <td class="${landingRatingClass(overallRating)}">${escapeHtml(String(overallRating))}</td>
+          <td class="${landingRatingClass(priorRating)}">${escapeHtml(String(priorRating))}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const totalFunding = sum(projects.map((project) => project.fundUsd));
+  const totalForecast = sum(projects.map((project) => currentQuarterForecast(project, currentQuarter)));
+  elements.landingTotals.innerHTML = `
+    <tr class="total-row">
+      <td></td>
+      <td>Total</td>
+      <td>${projects.length} projects</td>
+      <td></td>
+      <td></td>
+      <td>${landingMoney(totalFunding)}</td>
+      <td>${landingMoney(totalForecast)}</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+  `;
+
+  elements.landingRows.querySelectorAll("[data-project-index]").forEach((row) => {
+    row.addEventListener("click", () => {
+      state.selectedIndex = Number(row.getAttribute("data-project-index"));
+      state.selectedQuarterKey = null;
+      state.activeTab = "summary";
+      render();
+    });
+  });
+}
+
+function currentQuarterForecast(project, currentQuarter = currentFiscalQuarterInfo(new Date())) {
+  const rows = chartDataForProject(project).quarterRows || [];
+  const current = rows.find((row) => row.key === currentQuarter.key)
+    || rows.find((row) => row.periodEndDate && row.periodEndDate >= currentQuarter.startDate && row.periodEndDate <= currentQuarter.endDate)
+    || rows.find((row) => isFuturePeriod(row))
+    || rows[rows.length - 1];
+  return toNumber(current?.revenue);
+}
+
+function projectCustomer(project) {
+  const explicit = cleanText(project.customer || project.customerName || project.accountName);
+  if (explicit) return explicit;
+  const name = normalizeProjectKey(`${project.name || ""} ${project.sourceName || ""}`);
+  if (name.includes("taqa")) return "TAQA";
+  if (name.includes("oman") || name.includes("omantel") || name.includes("workload migration")) return "Oman Data Park SAOC";
+  if (name.includes("etisalat")) return "Etisalat Misr";
+  if (name.includes("emirat") || name.includes("emarat")) return "Emirates Petroleum Company (PJSC)";
+  if (name.includes("solution")) return "Solution Plus";
+  return "Unspecified";
+}
+
+function landingMoney(value) {
+  if (!Number.isFinite(value)) return "0";
+  return Math.round(value).toLocaleString("en-US");
+}
+
+function landingOverallRating(project) {
+  const explicit = cleanText(project.overallRating);
+  if (explicit) return Number.isFinite(Number(explicit)) ? Number(explicit) : explicit;
+  if (!project.fundUsd) return "Sales";
+  const forecastCapped = project.forecastCapped;
+  const margin = toNullableNumber(project.estimateAtClosureMargin);
+  const milestones = Array.isArray(project.milestones) && project.milestones.length ? milestoneSummary(project.milestones) : null;
+  if (forecastCapped || (margin !== null && margin < 0.35) || (milestones && milestones.overdue > 0)) return 80;
+  if (margin !== null && margin >= 0.55 && project.remainingRevenueToDate >= 0) return 95;
+  return 90;
+}
+
+function landingPriorMonthRating(project, overallRating) {
+  const explicit = cleanText(project.priorMonthRating);
+  if (explicit) return Number.isFinite(Number(explicit)) ? Number(explicit) : explicit;
+  if (typeof overallRating !== "number") return 90;
+  return Math.min(95, overallRating + (project.forecastCapped ? 0 : 5));
+}
+
+function landingForecastClass(value, project) {
+  if (project.forecastCapped) return "landing-cell-risk";
+  if (!project.fundUsd) return "landing-cell-warn";
+  const ratio = value / project.fundUsd;
+  if (ratio > 0.25) return "landing-cell-risk";
+  if (ratio > 0.08) return "landing-cell-warn";
+  return "landing-cell-ok";
+}
+
+function landingMarginClass(value) {
+  if (!Number.isFinite(value)) return "";
+  if (value < 0.4) return "landing-cell-risk";
+  if (value < 0.55) return "landing-cell-warn";
+  return "landing-cell-ok";
+}
+
+function landingRatingClass(value) {
+  if (value === "-" || value === "") return "";
+  if (String(value).toLowerCase() === "sales") return "landing-cell-sales";
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return "";
+  if (numberValue >= 90) return "landing-cell-ok";
+  if (numberValue >= 80) return "landing-cell-warn";
+  return "landing-cell-risk";
 }
 
 function renderPeople(project) {
@@ -422,10 +560,10 @@ function renderSummary(project) {
   const cards = [
     metric("Project Fund", money(project.fundUsd), "USD baseline", "metric-funding"),
     metric("Project Fund AED", money(project.fundAed, "AED"), "Converted at 3.67", "metric-funding-aed"),
-    metric("Revenue To Date", money(project.revenueToDate), project.revenueToDateNote, "metric-revenue"),
-    metric("Remaining", money(project.remainingRevenueToDate), remainingTone(project.remainingRevenueToDate), "metric-balance"),
+    metric("Cumulative ATD Revenue", money(project.revenueToDate), project.revenueToDateNote, "metric-revenue"),
+    metric("ETC Revenue", money(project.remainingRevenueToDate), remainingTone(project.remainingRevenueToDate), "metric-balance"),
     metric("POC", percent(latestPoc), project.currentQuarterLabel, "metric-progress"),
-    metric("Forecast Total", money(project.forecastRevenue), forecastFundingNote(forecastVariance), `metric-forecast ${forecastTone}`)
+    metric("Forecast Total", money(project.forecastRevenue), forecastFundingNote(forecastVariance, project), `metric-forecast ${forecastTone}`)
   ];
   elements.summaryGrid.innerHTML = cards.join("");
 }
@@ -458,7 +596,7 @@ function updateQuickRevenueCalculator() {
   elements.quickRevenueResult.textContent = revenue === null ? "-" : money(revenue);
   elements.quickRevenueFormula.textContent = valid
     ? `${number(targetHours)} / ${number(eacHours)} = ${percent(targetRatio)}`
-    : "Enter fund, EAC hours, and target hours";
+    : "Enter fund, EAC hours, and quarter forecasted hours";
   if (elements.quickRevenueCard) {
     elements.quickRevenueCard.classList.toggle("risk", valid && targetHours > eacHours);
     elements.quickRevenueCard.classList.toggle("accent", valid && targetHours <= eacHours);
@@ -483,6 +621,7 @@ function renderFacts(project) {
     fact("Project Number", project.number || "-"),
     fact("Contract Number", project.contractNumber || "-"),
     fact("Account Number", project.accountNumber || "-"),
+    projectAtdComparisonFact(project),
     projectExpenseFact(project),
     projectComparisonFact("Hours EAC vs Bid", project.estimateAtClosureHours, project.origBidHours, number, "hours"),
     projectComparisonFact("Revenue EAC vs Bid", project.estimateAtClosureRevenue, project.origBidRevenue, money, "revenue"),
@@ -490,6 +629,19 @@ function renderFacts(project) {
     projectMarginFact(project)
   ];
   elements.projectFacts.innerHTML = items.filter(Boolean).join("");
+}
+
+function projectAtdComparisonFact(project) {
+  const revenueAtdPct = project.fundUsd ? project.revenueToDate / project.fundUsd : null;
+  const pocPct = currentProjectPoc(project);
+  const milestones = Array.isArray(project.milestones) && project.milestones.length ? milestoneSummary(project.milestones) : null;
+  const milestoneAtdPct = milestones ? milestones.submittedWeight : null;
+  const values = [
+    `Revenue ATD ${percent(revenueAtdPct)}`,
+    `POC ${percent(pocPct)}`,
+    `Milestones ATD ${percent(milestoneAtdPct)}`
+  ];
+  return fact("ATD % Comparison", values.join(" vs "), "Revenue ATD% vs POC% vs Milestones ATD%", "accent");
 }
 
 function projectExpenseFact(project) {
@@ -732,7 +884,7 @@ function renderUnbilled(project) {
   if (!rows.length) {
     elements.unbilledSummary.innerHTML = emptyState("No unbilled data available");
     elements.unbilledCharts.innerHTML = emptyState("No unbilled charts available");
-    elements.unbilledRows.innerHTML = `<tr><td colspan="8">${emptyState("No unbilled data available")}</td></tr>`;
+    elements.unbilledRows.innerHTML = `<tr><td colspan="9">${emptyState("No unbilled data available")}</td></tr>`;
     elements.unbilledTotals.innerHTML = "";
     return;
   }
@@ -742,9 +894,9 @@ function renderUnbilled(project) {
   const baseline = unbilledBaseline(project, rows);
   elements.unbilledSummary.innerHTML = [
     billedVsUnbilledCard(summary, rate),
-    unbilledCard("Latest Forecast Unbilled", summary.latestUnbilled, escapeHtml(summary.latestLabel), unbilledTone(summary.latestUnbilled, summary.latestAged), rate),
-    unbilledCard(">180 Days Risk", summary.maxAged, escapeHtml(summary.maxAgedLabel), summary.maxAged > 0 ? "risk" : "accent", rate),
-    unbilledCard("Invoice Outlook", summary.totalInvoicing, `Revenue ${dualMoneyMini(summary.totalRevenue, rate)}`, summary.totalInvoicing < summary.totalRevenue ? "warn" : "accent", rate)
+    unbilledCard("Current Unbilled Situation", summary.currentUnbilled, `Total revenue - total invoiced - ${money(UNBILLED_RESERVE_USD)}`, unbilledTone(summary.currentUnbilled, summary.currentReversalRisk), rate),
+    unbilledCard("Unbilled Situation (Reversal Risk)", summary.currentReversalRisk, `Current Q-2 revenue - total invoiced - ${money(UNBILLED_RESERVE_USD)}`, summary.currentReversalRisk > 0 ? "risk" : "accent", rate),
+    unbilledTextCard("Invoice Aging", summary.maxAgingBucket, escapeHtml(summary.maxAgedLabel), summary.maxAged > 0 ? "risk" : "accent")
   ].join("");
 
   elements.unbilledCharts.innerHTML = renderUnbilledCharts(rows, project, rate);
@@ -760,6 +912,7 @@ function renderUnbilled(project) {
           <td>${moneyWithPercent(row.cumulativeInvoicing, baseline)}</td>
           <td>${moneyWithPercent(row.unbilledRevenue, baseline)}</td>
           <td>${moneyWithPercent(row.agedUnbilled, baseline)}</td>
+          <td>${escapeHtml(row.agingBucket || invoiceAgingBucket(row))}</td>
           <td>${unbilledStatusBadge(status)}</td>
         </tr>
       `;
@@ -776,6 +929,7 @@ function renderUnbilled(project) {
       <td>${moneyWithPercent(latest.cumulativeInvoicing, baseline)}</td>
       <td>${moneyWithPercent(latest.unbilledRevenue, baseline)}</td>
       <td>${moneyWithPercent(latest.agedUnbilled, baseline)}</td>
+      <td>${escapeHtml(latest.agingBucket || invoiceAgingBucket(latest))}</td>
       <td>${escapeHtml(unbilledStatus(latest).label)}</td>
     </tr>
   `;
@@ -800,9 +954,9 @@ function prepareUnbilledRows(rows) {
     const invoicing = toNumber(row.invoicing);
     cumulativeRevenue = toNullableNumber(row.cumulativeRevenue) ?? cumulativeRevenue + revenue;
     cumulativeInvoicing = toNullableNumber(row.cumulativeInvoicing) ?? cumulativeInvoicing + invoicing;
-    const unbilledRevenue = toNullableNumber(row.unbilledRevenue) ?? cumulativeRevenue - cumulativeInvoicing;
     const agedBase = prepared.length >= 2 ? prepared[prepared.length - 2].cumulativeRevenue : 0;
-    const agedUnbilled = toNullableNumber(row.agedUnbilled) ?? (prepared.length >= 2 ? agedBase - cumulativeInvoicing : 0);
+    const unbilledRevenue = currentUnbilledSituation(cumulativeRevenue, cumulativeInvoicing);
+    const agedUnbilled = prepared.length >= 2 ? reversalRiskUnbilled(agedBase, cumulativeInvoicing) : 0;
     prepared.push({
       ...row,
       key: row.key || quarter.key || cleanText(row.label),
@@ -813,7 +967,8 @@ function prepareUnbilledRows(rows) {
       cumulativeRevenue,
       cumulativeInvoicing,
       unbilledRevenue,
-      agedUnbilled
+      agedUnbilled,
+      agingBucket: invoiceAgingBucket({ periodEndDate })
     });
   });
   return prepared;
@@ -860,8 +1015,9 @@ function calculateUnbilledRows(project) {
       invoicing,
       cumulativeRevenue,
       cumulativeInvoicing,
-      unbilledRevenue: cumulativeRevenue - cumulativeInvoicing,
-      agedUnbilled: 0
+      unbilledRevenue: currentUnbilledSituation(cumulativeRevenue, cumulativeInvoicing),
+      agedUnbilled: 0,
+      agingBucket: invoiceAgingBucket({ periodEndDate: fiscalQuarterEndDate(quarter.quarter, quarter.fiscalYear) })
     });
   });
 
@@ -871,10 +1027,31 @@ function calculateUnbilledRows(project) {
       row.agedUnbilled = 0;
       return;
     }
-    row.agedUnbilled = rows[index - 2].cumulativeRevenue - row.cumulativeInvoicing;
+    row.agedUnbilled = reversalRiskUnbilled(rows[index - 2].cumulativeRevenue, row.cumulativeInvoicing);
   });
 
   return rows;
+}
+
+function currentUnbilledSituation(totalRevenue, totalInvoiced) {
+  return toNumber(totalRevenue) - toNumber(totalInvoiced) - UNBILLED_RESERVE_USD;
+}
+
+function reversalRiskUnbilled(currentQuarterMinusTwoRevenue, totalInvoiced) {
+  return toNumber(currentQuarterMinusTwoRevenue) - toNumber(totalInvoiced) - UNBILLED_RESERVE_USD;
+}
+
+function invoiceAgingBucket(row, referenceDate = new Date()) {
+  const periodEndDate = row?.periodEndDate;
+  if (!periodEndDate) return "Unscheduled";
+  const days = Math.max(0, Math.floor((startOfDay(referenceDate) - startOfDay(periodEndDate)) / 86400000));
+  if (days > 180) return ">180";
+  if (days > 150) return ">150";
+  if (days > 120) return ">120";
+  if (days > 90) return ">90";
+  if (days > 60) return ">60";
+  if (days > 30) return ">30";
+  return "Current";
 }
 
 function invoiceScheduleByQuarter(project) {
@@ -926,12 +1103,14 @@ function unbilledSummaryForRows(rows) {
   return {
     currentUnbilled: current.unbilledRevenue,
     currentAged: current.agedUnbilled,
+    currentReversalRisk: current.agedUnbilled,
     currentLabel: current.displayLabel || current.label,
     latestUnbilled: latest.unbilledRevenue,
     latestAged: latest.agedUnbilled,
     latestLabel: latest.displayLabel || latest.label,
     maxAged: Math.max(0, maxAgedRow.agedUnbilled),
-    maxAgedLabel: maxAgedRow.agedUnbilled > 0 ? `${maxAgedRow.displayLabel || maxAgedRow.label} exposure` : "No positive aged exposure",
+    maxAgingBucket: maxAgedRow.agingBucket || invoiceAgingBucket(maxAgedRow),
+    maxAgedLabel: maxAgedRow.agedUnbilled > 0 ? `${maxAgedRow.displayLabel || maxAgedRow.label} reversal exposure` : "No positive reversal exposure",
     totalRevenue: sum(rows.map((row) => row.revenue)),
     totalInvoicing: sum(rows.map((row) => row.invoicing))
   };
@@ -954,7 +1133,7 @@ function renderUnbilledCharts(rows, project, rate) {
         <div class="chart-heading">
           <div>
             <span>Aging View</span>
-            <strong>Unbilled and &gt;180 days</strong>
+            <strong>Unbilled and reversal risk</strong>
           </div>
         </div>
         ${unbilledAgingSvg(rows, rate, baseline)}
@@ -1041,7 +1220,7 @@ function unbilledAgingSvg(rows, rate, baseline) {
   }).join("");
 
   return `
-    <svg class="unbilled-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Unbilled aging chart">
+    <svg class="unbilled-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Unbilled reversal risk chart">
       <rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="var(--surface)"></rect>
       <line x1="${pad.left}" y1="${zeroY}" x2="${width - pad.right}" y2="${zeroY}" stroke="var(--line)" stroke-width="2"></line>
       <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="var(--line)"></line>
@@ -1049,7 +1228,7 @@ function unbilledAgingSvg(rows, rate, baseline) {
       <text x="${pad.left - 10}" y="${zeroY + 4}" text-anchor="end" font-size="10" font-weight="700" fill="var(--muted)">0</text>
       ${axisDualLabel(pad.left - 10, pad.top + innerH - 8, -maxAbs, rate, "end")}
       ${bars}
-      ${unbilledLegend([["Unbilled", "var(--berry)"], [">180 days", "var(--teal)"]], pad.left, height - 16)}
+      ${unbilledLegend([["Current unbilled", "var(--berry)"], ["Reversal risk", "var(--teal)"]], pad.left, height - 16)}
     </svg>
   `;
 }
@@ -1134,6 +1313,16 @@ function unbilledCard(label, value, note, className, rate) {
   `;
 }
 
+function unbilledTextCard(label, value, note, className) {
+  return `
+    <div class="unbilled-card ${className}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value || "-")}</strong>
+      <small>${note}</small>
+    </div>
+  `;
+}
+
 function dualMoney(value, rate) {
   return `
     <span class="dual-money">
@@ -1193,7 +1382,7 @@ function unbilledTone(unbilled, aged) {
 }
 
 function unbilledStatus(row) {
-  if (row.agedUnbilled > 0) return { key: "risk", label: ">180 days exposure" };
+  if (row.agedUnbilled > 0) return { key: "risk", label: `${row.agingBucket || invoiceAgingBucket(row)} reversal risk` };
   if (row.unbilledRevenue > 0) return { key: "warn", label: "Unbilled open" };
   if (row.unbilledRevenue < 0) return { key: "neutral", label: "Invoice ahead" };
   return { key: "accent", label: "Balanced" };
@@ -1607,7 +1796,8 @@ function fundingVariance(fund, cumulativeRevenue) {
     : { key: "under", label: "Under fund", variance };
 }
 
-function forecastFundingNote(variance) {
+function forecastFundingNote(variance, project = null) {
+  if (project?.forecastCapped) return `Capped at project funding; workbook forecast was ${money(project.forecastRevenueRaw)}`;
   if (variance.key === "on") return "On fund";
   const amount = money(Math.abs(variance.variance));
   return variance.key === "over" ? `Over fund by ${amount}` : `Less than fund by ${amount}`;
@@ -1782,7 +1972,7 @@ function personCard(role, name, image) {
     ? `<img src="${escapeHtml(imageSource)}" alt="${escapeHtml(name)}">`
     : `<span class="person-initials">${escapeHtml(initials(name))}</span>`;
   return `
-    <div class="person-card welcoming-person">
+    <div class="person-card">
       <div class="person-photo">${avatar}</div>
       <div>
         <span>${escapeHtml(role)}</span>
@@ -2120,6 +2310,10 @@ function normalizeProjectBase(base) {
     number: cleanText(base.number),
     contractNumber: cleanText(base.contractNumber),
     name: cleanText(base.name) || "Unnamed Project",
+    customer: cleanText(base.customer || base.customerName || base.accountName),
+    qrsRating: cleanText(base.qrsRating),
+    overallRating: cleanText(base.overallRating),
+    priorMonthRating: cleanText(base.priorMonthRating),
     customerLogoImage: cleanText(base.customerLogoImage) || localCustomerLogo(base.name),
     projectOwner: cleanText(base.projectOwner),
     portfolioLead: cleanText(base.portfolioLead),
@@ -2186,7 +2380,8 @@ function normalizeUnbilledRows(rows) {
 function finalizeProject(project, rows, mode, modeLabel) {
   const annotatedRows = annotateRowsWithFiscalCutoff(rows);
   const revenueToDateRows = annotatedRows.filter((row) => row.inRevenueToDate);
-  const forecastRevenue = project.forecastRevenueOverride ?? sum(annotatedRows.map((row) => row.revenue));
+  const rawForecastRevenue = project.forecastRevenueOverride ?? sum(annotatedRows.map((row) => row.revenue));
+  const forecastRevenue = validateForecastTotal(rawForecastRevenue, project.fundUsd);
   const revenueToDate = sum(revenueToDateRows.map((row) => row.revenue));
   const currentQuarter = currentFiscalQuarterInfo(new Date());
   return {
@@ -2196,6 +2391,8 @@ function finalizeProject(project, rows, mode, modeLabel) {
     mode,
     modeLabel,
     forecastRevenue,
+    forecastRevenueRaw: rawForecastRevenue,
+    forecastCapped: forecastRevenue < rawForecastRevenue - 0.5,
     totalRevenue: revenueToDate,
     revenueToDate,
     revenueToDateNote: `Till ${currentQuarter.label}`,
@@ -2203,6 +2400,13 @@ function finalizeProject(project, rows, mode, modeLabel) {
     remainingRevenueToDate: project.fundUsd - revenueToDate,
     currentQuarterLabel: `${currentQuarter.label} ending ${formatDate(currentQuarter.endDate)}`
   };
+}
+
+function validateForecastTotal(forecastRevenue, projectFunding) {
+  const forecast = toNumber(forecastRevenue);
+  const funding = toNullableNumber(projectFunding);
+  if (funding !== null && funding >= 0) return Math.min(forecast, funding);
+  return forecast;
 }
 
 function annotateRowsWithFiscalCutoff(rows) {
@@ -2512,6 +2716,10 @@ function extractStructuredMasterProjects(sheet, sourceName) {
       contractNumber: getCellValue(sheet, row, header.columns.contractNumber),
       accountNumber: getCellValue(sheet, row, header.columns.accountNumber) || projectCardValues.accountNumber,
       name,
+      customer: optionalProjectColumnValue(sheet, header, row, "customer"),
+      qrsRating: optionalProjectColumnValue(sheet, header, row, "qrsRating"),
+      overallRating: optionalProjectColumnValue(sheet, header, row, "overallRating"),
+      priorMonthRating: optionalProjectColumnValue(sheet, header, row, "priorMonthRating"),
       customerLogoImage: getCellImage(sheet, row, header.columns.customerLogoImage) || projectCardValues.customerLogoImage,
       projectOwner: projectPersonValue(sheet, header, row, "projectOwner", "Project Owner"),
       portfolioLead: projectPersonValue(sheet, header, row, "portfolioLead", "Portfolio Lead"),
@@ -2698,18 +2906,20 @@ function masterRevenueRowsForProject(sheet, projectRow, sections, revenueRow, mo
   const financialByQuarter = new Map();
   sections.forEach((section) => {
     section.groups.forEach((group) => {
-      const key = fiscalQuarterKey(group.quarter, group.fiscalYear);
+      const groupInfo = masterFiscalInfoForGroup(sheet, monthHeaderRow, group);
+      const groupForDates = { ...group, ...groupInfo, label: groupInfo.displayLabel };
+      const key = groupInfo.key;
       const existing = financialByQuarter.get(key) || {
         key,
-        label: group.label,
-        displayLabel: fiscalQuarterDisplayLabel(group.quarter, group.fiscalYear),
-        quarter: group.quarter,
-        fiscalYear: group.fiscalYear,
+        label: groupInfo.displayLabel,
+        displayLabel: groupInfo.displayLabel,
+        quarter: groupInfo.quarter,
+        fiscalYear: groupInfo.fiscalYear,
         revenue: null,
         invoicing: null,
         monthlyValues: []
       };
-      const monthlyValues = masterMonthlyValuesForGroup(sheet, projectRow, group, monthHeaderRow);
+      const monthlyValues = masterMonthlyValuesForGroup(sheet, projectRow, groupForDates, monthHeaderRow);
       const quarterlyValue = toNullableNumber(getCellValue(sheet, revenueRow, group.startCol));
       const monthlyTotal = sum(monthlyValues.map((item) => item.revenue));
       const revenue = quarterlyValue ?? (monthlyTotal || null);
@@ -2796,12 +3006,14 @@ function masterUnbilledRowsFromFinancialRows(financialRows) {
     cumulativeInvoicing += invoicing;
     rows.push({
       label: quarter.displayLabel,
+      periodEndDate: fiscalQuarterEndDate(quarter.quarter, quarter.fiscalYear),
       revenue,
       invoicing,
       cumulativeRevenue,
       cumulativeInvoicing,
-      unbilledRevenue: cumulativeRevenue - cumulativeInvoicing,
-      agedUnbilled: 0
+      unbilledRevenue: currentUnbilledSituation(cumulativeRevenue, cumulativeInvoicing),
+      agedUnbilled: 0,
+      agingBucket: invoiceAgingBucket({ periodEndDate: fiscalQuarterEndDate(quarter.quarter, quarter.fiscalYear) })
     });
   });
 
@@ -2811,10 +3023,33 @@ function masterUnbilledRowsFromFinancialRows(financialRows) {
       row.agedUnbilled = 0;
       return;
     }
-    row.agedUnbilled = rows[index - 2].cumulativeRevenue - row.cumulativeInvoicing;
+    row.agedUnbilled = reversalRiskUnbilled(rows[index - 2].cumulativeRevenue, row.cumulativeInvoicing);
   });
 
   return rows;
+}
+
+function masterFiscalInfoForGroup(sheet, monthHeaderRow, group) {
+  if (/\bFY\s*\d{2,4}\b/i.test(cleanText(group.label))) {
+    return fiscalQuarterInfo(group.quarter, group.fiscalYear);
+  }
+
+  const labelYear = extractYear(group.label);
+  const firstMonth = firstMonthInMasterGroup(sheet, monthHeaderRow, group);
+  if (labelYear && firstMonth !== null) {
+    const info = currentFiscalQuarterInfo(new Date(labelYear, firstMonth, 1));
+    return fiscalQuarterInfo(info.quarter, info.fiscalYear);
+  }
+
+  return fiscalQuarterInfo(group.quarter, group.fiscalYear);
+}
+
+function firstMonthInMasterGroup(sheet, monthHeaderRow, group) {
+  for (let col = group.startCol; col <= group.endCol; col += 1) {
+    const month = extractMonthIndex(cleanText(getCellValue(sheet, monthHeaderRow, col)));
+    if (month !== null) return month;
+  }
+  return null;
 }
 
 function masterMonthlyValuesForGroup(sheet, projectRow, group, monthHeaderRow) {
@@ -3333,6 +3568,28 @@ function projectPersonValue(sheet, header, projectRow, columnKey, label) {
   return valueBelowOf(sheet, label);
 }
 
+function optionalProjectColumnValue(sheet, header, projectRow, columnKey) {
+  const col = header.columns[columnKey];
+  if (col) return getCellValue(sheet, projectRow, col);
+  if (columnKey === "priorMonthRating") {
+    const fallbackCol = findNearbyRatingColumn(sheet, header, ["prior month rating", "previous month rating", "prior quarter", "previous quarter", "prevoius quarter"]);
+    if (fallbackCol) return getCellValue(sheet, projectRow, fallbackCol);
+  }
+  return "";
+}
+
+function findNearbyRatingColumn(sheet, header, labels) {
+  const wanted = new Set(labels.map(normalizeText));
+  const startRow = Math.max(1, header.row - 1);
+  const endRow = Math.min(sheet.maxRow, header.row + 3);
+  for (let row = startRow; row <= endRow; row += 1) {
+    for (let col = 1; col <= sheet.maxCol; col += 1) {
+      if (wanted.has(normalizeText(getCellValue(sheet, row, col)))) return col;
+    }
+  }
+  return null;
+}
+
 function valueBelowOf(sheet, label) {
   const normalized = normalizeText(label);
   for (let row = 1; row <= sheet.maxRow; row += 1) {
@@ -3530,6 +3787,10 @@ function extractMasterProjects(sheet, sourceName) {
       contractNumber: getCellValue(sheet, row, header.columns.contractNumber),
       accountNumber: getCellValue(sheet, row, header.columns.accountNumber) || projectCardValues.accountNumber,
       name,
+      customer: optionalProjectColumnValue(sheet, header, row, "customer"),
+      qrsRating: optionalProjectColumnValue(sheet, header, row, "qrsRating"),
+      overallRating: optionalProjectColumnValue(sheet, header, row, "overallRating"),
+      priorMonthRating: optionalProjectColumnValue(sheet, header, row, "priorMonthRating"),
       customerLogoImage: getCellImage(sheet, row, header.columns.customerLogoImage) || projectCardValues.customerLogoImage,
       projectOwner: projectPersonValue(sheet, header, row, "projectOwner", "Project Owner"),
       portfolioLead: projectPersonValue(sheet, header, row, "portfolioLead", "Portfolio Lead"),
@@ -3569,12 +3830,16 @@ function findProjectHeader(sheet) {
     number: ["project number", "project #"],
     contractNumber: ["contract number"],
     accountNumber: ["account number"],
+    customer: ["customer", "customer name", "account name"],
     name: ["project name"],
     customerLogoImage: ["customer logo", "customer logo pic", "customer logo image", "logo"],
     fundUsd: ["project fund", "project fund $", "project fund usd"],
     fundAed: ["project fund aed"],
     hoursWithoutContingency: ["total hours without contingency"],
-    hoursWithContingency: ["total hours with contingency"]
+    hoursWithContingency: ["total hours with contingency"],
+    qrsRating: ["qrs rating"],
+    overallRating: ["overall rating"],
+    priorMonthRating: ["prior month rating"]
   };
 
   for (let row = 1; row <= Math.min(sheet.maxRow, 12); row += 1) {
