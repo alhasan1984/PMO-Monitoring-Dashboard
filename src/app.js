@@ -543,29 +543,32 @@ function landingRatingClass(value) {
   return "landing-cell-risk";
 }
 
-function landingComparisonMarker(currentValue, previousValue, label) {
+function landingComparisonMarker(currentValue, previousValue, label, formatDelta = money) {
   const current = toNullableNumber(currentValue);
   const previous = toNullableNumber(previousValue);
-  if (current === null || previous === null || Math.abs(previous) < 0.000001) {
-    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} comparison unavailable">FLAT</span>`;
+  if (current === null || previous === null) {
+    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} comparison unavailable"><span class="landing-marker-arrow">&rarr;</span><span>-</span></span>`;
   }
   const delta = current - previous;
-  if (Math.abs(delta) < 0.5) {
-    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} no material change">FLAT</span>`;
+  const ratio = Math.abs(previous) < 0.000001
+    ? Math.abs(current) < 0.000001 ? 0 : current > 0 ? 1 : -1
+    : delta / Math.abs(previous);
+  if (Math.abs(delta) < 0.5 || Math.abs(ratio) < 0.0005) {
+    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} no material change"><span class="landing-marker-arrow">&rarr;</span><span>${escapeHtml(percent(0))}</span></span>`;
   }
   const key = delta > 0 ? "up" : "down";
-  const text = delta > 0 ? "UP" : "DOWN";
-  const note = `${label}: ${money(Math.abs(delta))} ${delta > 0 ? "higher" : "lower"}`;
-  return `<span class="landing-marker landing-marker-${key}" title="${escapeHtml(note)}">${text}</span>`;
+  const arrow = delta > 0 ? "&uarr;" : "&darr;";
+  const note = `${label}: ${formatDelta(Math.abs(delta))} ${delta > 0 ? "higher" : "lower"} (${signedPercent(ratio)})`;
+  return `<span class="landing-marker landing-marker-${key}" title="${escapeHtml(note)}"><span class="landing-marker-arrow">${arrow}</span><span>${escapeHtml(signedPercent(ratio))}</span></span>`;
 }
 
 function landingHealthMarker(overallRating, priorRating) {
   const current = toNullableNumber(overallRating);
   const previous = toNullableNumber(priorRating);
   if (current === null || previous === null) {
-    return `<span class="landing-marker landing-marker-flat" title="Project health comparison unavailable">FLAT</span>`;
+    return `<span class="landing-marker landing-marker-flat" title="Project health comparison unavailable"><span class="landing-marker-arrow">&rarr;</span><span>-</span></span>`;
   }
-  return landingComparisonMarker(current, previous, "Project health");
+  return landingComparisonMarker(current, previous, "Project health", (value) => `${number(value)} pts`);
 }
 
 function renderPeople(project) {
