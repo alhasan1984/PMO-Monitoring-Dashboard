@@ -784,7 +784,7 @@ select {
 
 .landing-table {
   border-collapse: collapse;
-  min-width: 1320px;
+  min-width: 1680px;
 }
 
 .landing-table th,
@@ -811,12 +811,15 @@ select {
 }
 
 .landing-table td:nth-child(3),
-.landing-table td:nth-child(6),
 .landing-table td:nth-child(7),
 .landing-table td:nth-child(8),
 .landing-table td:nth-child(9),
 .landing-table td:nth-child(10),
-.landing-table td:nth-child(11) {
+.landing-table td:nth-child(11),
+.landing-table td:nth-child(12),
+.landing-table td:nth-child(13),
+.landing-table td:nth-child(14),
+.landing-table td:nth-child(15) {
   text-align: center;
 }
 
@@ -871,6 +874,34 @@ select {
 .landing-cell-sales {
   background: #ffffff;
   color: #000000 !important;
+}
+
+.landing-marker {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 900;
+  justify-content: center;
+  min-width: 58px;
+  padding: 5px 8px;
+}
+
+.landing-marker-up {
+  background: color-mix(in srgb, var(--green) 18%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--green) 36%, #ffffff);
+  color: var(--green);
+}
+
+.landing-marker-down {
+  background: color-mix(in srgb, var(--berry) 14%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--berry) 34%, #ffffff);
+  color: var(--berry);
+}
+
+.landing-marker-flat {
+  background: color-mix(in srgb, var(--muted) 12%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--muted) 24%, #ffffff);
+  color: var(--muted);
 }
 
 .landing-table tfoot td {

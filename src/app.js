@@ -394,7 +394,7 @@ function renderLanding() {
   if (!elements.landingRows || !elements.landingTotals) return;
   const projects = Array.isArray(state.projects) ? state.projects : [];
   if (!projects.length) {
-    elements.landingRows.innerHTML = `<tr><td colspan="11">${emptyState("No projects loaded")}</td></tr>`;
+    elements.landingRows.innerHTML = `<tr><td colspan="15">${emptyState("No projects loaded")}</td></tr>`;
     elements.landingTotals.innerHTML = "";
     return;
   }
@@ -403,6 +403,7 @@ function renderLanding() {
   elements.landingRows.innerHTML = projects
     .map((project, index) => {
       const currentForecast = currentQuarterForecast(project, currentQuarter);
+      const previousRevenue = previousQuarterRevenue(project, currentQuarter);
       const qrsRating = project.qrsRating || "-";
       const overallRating = landingOverallRating(project);
       const priorRating = landingPriorMonthRating(project, overallRating);
@@ -413,18 +414,23 @@ function renderLanding() {
           <td class="landing-project-number">${escapeHtml(project.number || "-")}</td>
           <td>${escapeHtml(project.name || "-")}</td>
           <td>${escapeHtml(project.projectOwner || project.portfolioLead || "-")}</td>
+          <td>${escapeHtml(project.portfolioLead || "-")}</td>
           <td>${landingMoney(project.fundUsd)}</td>
+          <td>${landingMoney(previousRevenue)}</td>
           <td class="${landingForecastClass(currentForecast, project)}">${landingMoney(currentForecast)}</td>
+          <td>${landingComparisonMarker(currentForecast, previousRevenue, "Revenue")}</td>
           <td class="${landingMarginClass(project.estimateAtClosureMargin)}">${percent(project.estimateAtClosureMargin)}</td>
           <td class="${landingRatingClass(qrsRating)}">${escapeHtml(String(qrsRating))}</td>
           <td class="${landingRatingClass(overallRating)}">${escapeHtml(String(overallRating))}</td>
           <td class="${landingRatingClass(priorRating)}">${escapeHtml(String(priorRating))}</td>
+          <td>${landingHealthMarker(overallRating, priorRating)}</td>
         </tr>
       `;
     })
     .join("");
 
   const totalFunding = sum(projects.map((project) => project.fundUsd));
+  const totalPreviousRevenue = sum(projects.map((project) => previousQuarterRevenue(project, currentQuarter)));
   const totalForecast = sum(projects.map((project) => currentQuarterForecast(project, currentQuarter)));
   elements.landingTotals.innerHTML = `
     <tr class="total-row">
@@ -433,8 +439,12 @@ function renderLanding() {
       <td>${projects.length} projects</td>
       <td></td>
       <td></td>
+      <td></td>
       <td>${landingMoney(totalFunding)}</td>
+      <td>${landingMoney(totalPreviousRevenue)}</td>
       <td>${landingMoney(totalForecast)}</td>
+      <td>${landingComparisonMarker(totalForecast, totalPreviousRevenue, "Portfolio revenue")}</td>
+      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -459,6 +469,16 @@ function currentQuarterForecast(project, currentQuarter = currentFiscalQuarterIn
     || rows.find((row) => isFuturePeriod(row))
     || rows[rows.length - 1];
   return toNumber(current?.revenue);
+}
+
+function previousQuarterRevenue(project, currentQuarter = currentFiscalQuarterInfo(new Date())) {
+  const rows = chartDataForProject(project).quarterRows || [];
+  const previousQuarter = addFiscalQuarters(currentQuarter, -1);
+  const previous = rows.find((row) => row.key === previousQuarter.key)
+    || rows
+      .filter((row) => row.periodEndDate && row.periodEndDate < currentQuarter.startDate)
+      .sort((a, b) => b.periodEndDate - a.periodEndDate)[0];
+  return toNumber(previous?.revenue);
 }
 
 function projectCustomer(project) {
@@ -521,6 +541,31 @@ function landingRatingClass(value) {
   if (numberValue >= 90) return "landing-cell-ok";
   if (numberValue >= 80) return "landing-cell-warn";
   return "landing-cell-risk";
+}
+
+function landingComparisonMarker(currentValue, previousValue, label) {
+  const current = toNullableNumber(currentValue);
+  const previous = toNullableNumber(previousValue);
+  if (current === null || previous === null || Math.abs(previous) < 0.000001) {
+    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} comparison unavailable">FLAT</span>`;
+  }
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.5) {
+    return `<span class="landing-marker landing-marker-flat" title="${escapeHtml(label)} no material change">FLAT</span>`;
+  }
+  const key = delta > 0 ? "up" : "down";
+  const text = delta > 0 ? "UP" : "DOWN";
+  const note = `${label}: ${money(Math.abs(delta))} ${delta > 0 ? "higher" : "lower"}`;
+  return `<span class="landing-marker landing-marker-${key}" title="${escapeHtml(note)}">${text}</span>`;
+}
+
+function landingHealthMarker(overallRating, priorRating) {
+  const current = toNullableNumber(overallRating);
+  const previous = toNullableNumber(priorRating);
+  if (current === null || previous === null) {
+    return `<span class="landing-marker landing-marker-flat" title="Project health comparison unavailable">FLAT</span>`;
+  }
+  return landingComparisonMarker(current, previous, "Project health");
 }
 
 function renderPeople(project) {
