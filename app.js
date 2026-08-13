@@ -1,6 +1,10 @@
 const EXCHANGE_RATE = 3.67;
 const HOURS_PER_DAY = 8;
 const UNBILLED_RESERVE_USD = 250000;
+const DEFAULT_WORKBOOK = {
+  url: "assets/master-sheet.xlsx?v=20260812",
+  name: "Master Sheet - 12 Aug.xlsx"
+};
 const FISCAL_QUARTER_END_MONTHS = {
   1: 7,
   2: 10,
@@ -295,6 +299,7 @@ function init() {
   });
 
   render();
+  void loadBundledWorkbook();
 }
 
 function applyTheme(theme) {
@@ -313,6 +318,24 @@ async function handleFileInput(event) {
   event.target.value = "";
 }
 
+async function loadBundledWorkbook() {
+  try {
+    setStatus("Loading latest master sheet...", false);
+    const response = await fetch(DEFAULT_WORKBOOK.url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Latest master sheet could not be downloaded (${response.status}).`);
+    }
+    const workbookBlob = await response.blob();
+    const workbookFile = new File([workbookBlob], DEFAULT_WORKBOOK.name, {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+    await loadWorkbookFile(workbookFile);
+  } catch (error) {
+    console.error(error);
+    setStatus("Latest master sheet could not be loaded. Sample data is shown; use Upload Excel to retry.", true);
+  }
+}
+
 async function loadWorkbookFile(file) {
   try {
     setStatus("", false);
@@ -326,9 +349,11 @@ async function loadWorkbookFile(file) {
     state.sourceStatus = "";
     state.sourceWarning = false;
     render();
+    return true;
   } catch (error) {
     console.error(error);
     setStatus(error.message || "Workbook could not be loaded", true);
+    return false;
   }
 }
 
