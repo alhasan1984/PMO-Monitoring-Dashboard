@@ -800,7 +800,10 @@ select {
   background: color-mix(in srgb, var(--paper) 80%, #ffffff);
   font-size: 0.84rem;
   font-weight: 850;
+  hyphens: none;
+  overflow-wrap: normal;
   text-transform: none;
+  word-break: normal;
 }
 
 .landing-table td:nth-child(1),
@@ -880,12 +883,12 @@ select {
   align-items: center;
   border-radius: 999px;
   display: inline-flex;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  gap: 4px;
+  gap: 2px;
   justify-content: center;
-  min-width: 74px;
-  padding: 4px 7px;
+  min-width: 58px;
+  padding: 3px 4px;
 }
 
 .landing-marker-arrow {

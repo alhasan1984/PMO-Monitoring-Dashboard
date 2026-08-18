@@ -210,6 +210,7 @@ const elements = {
   customerLogoCard: document.getElementById("customerLogoCard"),
   peopleStrip: document.getElementById("peopleStrip"),
   sourceStatus: document.getElementById("sourceStatus"),
+  landingHeader: document.getElementById("landingHeader"),
   landingRows: document.getElementById("landingRows"),
   landingTotals: document.getElementById("landingTotals"),
   summaryGrid: document.getElementById("summaryGrid"),
@@ -433,6 +434,27 @@ function renderProjectSelect() {
 
 function renderLanding() {
   if (!elements.landingRows || !elements.landingTotals) return;
+  if (elements.landingHeader) {
+    elements.landingHeader.innerHTML = `
+      <tr>
+        <th scope="col" aria-label="Open project"></th>
+        <th scope="col">Customer</th>
+        <th scope="col">Project Number</th>
+        <th scope="col">Project Name</th>
+        <th scope="col">Project Manager</th>
+        <th scope="col">Portfolio Lead</th>
+        <th scope="col">Labor Funding</th>
+        <th scope="col">Previous Qtr Revenue</th>
+        <th scope="col">Current Qtr Forecast</th>
+        <th scope="col">Revenue Trend</th>
+        <th scope="col">EAC Margin</th>
+        <th scope="col">QRS Rating</th>
+        <th scope="col">Overall Rating</th>
+        <th scope="col">Prior Month Rating</th>
+        <th scope="col">Health Trend</th>
+      </tr>
+    `;
+  }
   const projects = Array.isArray(state.projects) ? state.projects : [];
   if (!projects.length) {
     elements.landingRows.innerHTML = `<tr><td colspan="15">${emptyState("No projects loaded")}</td></tr>`;
