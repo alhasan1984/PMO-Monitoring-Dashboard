@@ -2,8 +2,11 @@ const EXCHANGE_RATE = 3.67;
 const HOURS_PER_DAY = 8;
 const UNBILLED_RESERVE_USD = 250000;
 const DEFAULT_WORKBOOK = {
-  url: "assets/master-sheet.xlsx?v=20260812",
-  name: "Master Sheet - 12 Aug.xlsx"
+  urls: [
+    "assets/master-sheet.xlsx?v=20260818",
+    "assets/Master%20Sheet.xlsx?v=20260818"
+  ],
+  name: "Master Sheet.xlsx"
 };
 const FISCAL_QUARTER_END_MONTHS = {
   1: 7,
@@ -251,14 +254,16 @@ function init() {
   });
 
   elements.workbookInput.addEventListener("change", handleFileInput);
-  elements.sampleButton.addEventListener("click", () => {
-    state.projects = SAMPLE_PROJECTS;
-    state.selectedIndex = 0;
-    state.selectedQuarterKey = null;
-    state.sourceStatus = "Sample Data";
-    state.sourceWarning = false;
-    render();
-  });
+  if (elements.sampleButton) {
+    elements.sampleButton.addEventListener("click", () => {
+      state.projects = SAMPLE_PROJECTS;
+      state.selectedIndex = 0;
+      state.selectedQuarterKey = null;
+      state.sourceStatus = "Sample Data";
+      state.sourceWarning = false;
+      render();
+    });
+  }
 
   elements.projectSelect.addEventListener("change", (event) => {
     state.selectedIndex = Number(event.target.value);
@@ -277,26 +282,28 @@ function init() {
     });
   });
 
-  ["dragenter", "dragover"].forEach((eventName) => {
-    elements.dropZone.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      elements.dropZone.classList.add("dragging");
+  if (elements.dropZone) {
+    ["dragenter", "dragover"].forEach((eventName) => {
+      elements.dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        elements.dropZone.classList.add("dragging");
+      });
     });
-  });
 
-  ["dragleave", "drop"].forEach((eventName) => {
-    elements.dropZone.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      elements.dropZone.classList.remove("dragging");
+    ["dragleave", "drop"].forEach((eventName) => {
+      elements.dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        elements.dropZone.classList.remove("dragging");
+      });
     });
-  });
 
-  elements.dropZone.addEventListener("drop", async (event) => {
-    const file = event.dataTransfer.files[0];
-    if (file) {
-      await loadWorkbookFile(file);
-    }
-  });
+    elements.dropZone.addEventListener("drop", async (event) => {
+      const file = event.dataTransfer.files[0];
+      if (file) {
+        await loadWorkbookFile(file);
+      }
+    });
+  }
 
   render();
   void loadBundledWorkbook();
@@ -321,9 +328,18 @@ async function handleFileInput(event) {
 async function loadBundledWorkbook() {
   try {
     setStatus("Loading latest master sheet...", false);
-    const response = await fetch(DEFAULT_WORKBOOK.url, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`Latest master sheet could not be downloaded (${response.status}).`);
+    let response = null;
+    let lastStatus = null;
+    for (const url of DEFAULT_WORKBOOK.urls) {
+      const candidate = await fetch(url, { cache: "no-store" });
+      lastStatus = candidate.status;
+      if (candidate.ok) {
+        response = candidate;
+        break;
+      }
+    }
+    if (!response) {
+      throw new Error(`Latest master sheet could not be downloaded (${lastStatus || "not found"}).`);
     }
     const workbookBlob = await response.blob();
     const workbookFile = new File([workbookBlob], DEFAULT_WORKBOOK.name, {
@@ -843,7 +859,7 @@ function renderChart(project) {
 }
 
 function renderMethod(project) {
-  elements.methodTitle.textContent = project.modeLabel;
+  if (elements.methodTitle) elements.methodTitle.textContent = project.modeLabel;
   const latestPoc = currentProjectPoc(project);
   const items = [
     fact("Primary Basis", project.mode === "hours" ? "Period hours" : project.mode === "estimator" ? "Workbook estimator rows" : "Imported revenue"),
@@ -851,7 +867,7 @@ function renderMethod(project) {
     fact("Latest POC", percent(latestPoc)),
     fact("Revenue Formula", project.mode === "hours" ? "(POC * Funding) - Prior Cumulative" : "Imported period revenue")
   ];
-  elements.methodGrid.innerHTML = items.join("");
+  if (elements.methodGrid) elements.methodGrid.innerHTML = items.join("");
 }
 
 function renderTable(project) {
